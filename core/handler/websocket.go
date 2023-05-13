@@ -28,13 +28,16 @@ func (h *WebSockerHandler) ConnectWebSocket(c echo.Context) error {
 		log.Errorln(err)
 		return err
 	}
-	log.Infoln(fmt.Sprintf("New connection: %s", uuid.String()))
 
 	// Store WebSocket connection and UUID
-	common.StoreConnection(uuid.String(), conn)
+	err = common.StoreConnection(uuid.String(), conn)
+	if err != nil {
+		return err
+	}
+	log.Infoln(fmt.Sprintf("New connection: %s", uuid.String()))
 
 	// Send UUID to frontend
-	err = conn.WriteMessage(websocket.TextMessage, []byte(uuid.String()))
+	err = common.WriteMessage(uuid.String(), uuid.String())
 	if err != nil {
 		log.Errorln(err)
 		return err
@@ -51,10 +54,13 @@ func (h *WebSockerHandler) ConnectWebSocket(c echo.Context) error {
 					log.Errorln(err)
 				}
 				conn.Close()
-				if common.IsConnected(uuid.String()) {
-					common.DeleteConnection(uuid.String())
-					log.Infoln(fmt.Sprintf("Deleted connection: %s", uuid.String()))
+
+				if err := common.DeleteConnection(uuid.String()); err != nil {
+					log.Errorln(err)
+					return
 				}
+				log.Infoln(fmt.Sprintf("Deleted connection: %s", uuid.String()))
+
 				break
 			}
 		}

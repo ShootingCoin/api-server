@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -16,22 +17,49 @@ func ListConnections() map[string]*websocket.Conn {
 	return connections
 }
 
-func StoreConnection(uuid string, conn *websocket.Conn) {
+func StoreConnection(uuid string, conn *websocket.Conn) error {
+	if err := CheckConnection(uuid); err != nil {
+		return err
+	}
+
 	connectionsMutex.Lock()
 	defer connectionsMutex.Unlock()
 	connections[uuid] = conn
+
+	return nil
 }
 
-func DeleteConnection(uuid string) {
+func DeleteConnection(uuid string) error {
+	if err := CheckConnection(uuid); err != nil {
+		return err
+	}
+
 	connectionsMutex.Lock()
 	defer connectionsMutex.Unlock()
 	delete(connections, uuid)
+
+	return nil
 }
 
-func IsConnected(uuid string) bool {
+func CheckConnection(uuid string) error {
+	connectionsMutex.Lock()
+	defer connectionsMutex.Unlock()
+
 	if _, ok := connections[uuid]; !ok {
-		return false
+		return fmt.Errorf("connection not found: %s", uuid)
 	}
 
-	return true
+	return nil
+}
+
+func WriteMessage(uuid string, msg string) error {
+	if err := CheckConnection(uuid); err != nil {
+		return err
+	}
+
+	if err := connections[uuid].WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+		return err
+	}
+
+	return nil
 }

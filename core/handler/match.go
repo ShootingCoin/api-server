@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -50,7 +51,7 @@ func (h *MatchHandler) MatchGames(c echo.Context) error {
 	}
 
 	// Convert price to bucket value
-	bucket, err := utils.GetBucket(matchReq.Price)
+	reqBucket, err := utils.GetBucket(matchReq.Price)
 	if err != nil {
 		log.Errorln(err)
 		return c.JSON(http.StatusBadRequest, fmt.Sprintf("Invalid price: %v", err))
@@ -62,6 +63,14 @@ func (h *MatchHandler) MatchGames(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), timeoutDuration)
 		defer cancel()
 
+		// Generate UUID for matched game
+		gameUuid, err := uuid.NewRandom()
+		if err != nil {
+			log.Errorln(err)
+			return
+		}
+
+		var matchUuid string
 		for {
 			select {
 			// Time out after 15 seconds
@@ -76,20 +85,16 @@ func (h *MatchHandler) MatchGames(c echo.Context) error {
 				return
 			default:
 				// No matching requests, add original request to Redis
-				if h.rdb.LLen(ctx, requestsKeyPrefix+bucket).Val() == 0 {
+				if h.rdb.LLen(ctx, requestsKeyPrefix+reqBucket).Val() == 0 {
 					// Add original request back to Redis since there are no more matching requests
-					pushResult := h.rdb.LPush(ctx, requestsKeyPrefix+bucket, reqUuid+":"+bucket)
-					log.Infoln(fmt.Sprintf("No matching requests, adding original request back to Redis: %s", reqUuid+":"+bucket))
-					if pushResult.Err() != nil {
-						log.Errorln(pushResult.Err())
-					}
+					h.pushRequest(ctx, requestsKeyPrefix+reqBucket, reqUuid+":"+reqBucket)
+
 					return
 				}
 
 				// Pop matching request from Redis
-				_, err := h.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-					popResult := pipe.RPop(ctx, requestsKeyPrefix+bucket)
-					connections := common.ListConnections()
+				if _, err := h.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+					popResult := pipe.RPop(ctx, requestsKeyPrefix+reqBucket)
 
 					if popResult.Err() != nil {
 						log.Errorln(popResult.Err())
@@ -108,48 +113,50 @@ func (h *MatchHandler) MatchGames(c echo.Context) error {
 						log.Errorf("Invalid Redis value: %v", req)
 						return fmt.Errorf("invalid Redis value")
 					}
-					matchUuid := parts[0]
-					bucket2 := parts[1]
-
-					// Check if matched client is still connected
-					if !common.IsConnected(matchUuid) {
-						log.Errorln(fmt.Sprintf("Matched client is no longer connected: %s", matchUuid))
-						return fmt.Errorf("matched client is no longer connected")
-					}
-
-					// Send matching result to matched client
-					if err := connections[matchUuid].WriteMessage(websocket.TextMessage, []byte(bucket2)); err != nil {
-						log.Errorln(err)
-						return err
-					}
-					log.Infof("Matched request: %s", bucket2)
-
-					// Check if requesting client is still connected
-					if !common.IsConnected(reqUuid) {
-						log.Errorln(fmt.Sprintf("Requesting client is no longer connected: %s", matchUuid))
-						return fmt.Errorf("requesting client is no longer connected")
-					}
-
-					// Send matching result to requesting client
-					if err := connections[reqUuid].WriteMessage(websocket.TextMessage, []byte(bucket)); err != nil {
-						log.Errorln(err)
-						return err
-					}
+					matchUuid = parts[0]
 
 					return nil
-				})
-
-				if err != nil {
+				}); err != nil {
 					log.Errorln(err)
 					continue
 				}
 
+				// Send matching result to requesting client
+				if err := common.WriteMessage(reqUuid, gameUuid.String()); err != nil {
+					log.Errorln(err)
+					h.pushRequest(ctx, requestsKeyPrefix+reqBucket, reqUuid+":"+reqBucket)
+
+					return
+				}
+
+				// Send matching result to matched client
+				if err := common.WriteMessage(matchUuid, gameUuid.String()); err != nil {
+					log.Errorln(err)
+
+					return
+				}
+
+				log.Infof("Match completed: %s:%s", reqUuid, matchUuid)
+
+				return
 			}
 		}
 	}()
 
 	// Return success response
 	return c.NoContent(http.StatusOK)
+}
+
+func (h *MatchHandler) pushRequest(ctx context.Context, key string, value string) error {
+	pushResult := h.rdb.LPush(ctx, key, value)
+	if pushResult.Err() != nil {
+		log.Errorln(pushResult.Err())
+		return pushResult.Err()
+	}
+
+	log.Infoln(fmt.Sprintf("Pushed request to Redis - key: %s value: %s", key, value))
+
+	return nil
 }
 
 func NewMatchHandler(rdb *redis.Client) *MatchHandler {
