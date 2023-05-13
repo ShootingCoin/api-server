@@ -18,10 +18,6 @@ func ListConnections() map[string]*websocket.Conn {
 }
 
 func StoreConnection(uuid string, conn *websocket.Conn) error {
-	if err := checkConnection(uuid); err != nil {
-		return err
-	}
-
 	connectionsMutex.Lock()
 	defer connectionsMutex.Unlock()
 	connections[uuid] = conn
