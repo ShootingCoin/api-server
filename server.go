@@ -41,12 +41,16 @@ func main() {
 
 	webSocketHandler := handler.NewWebSocketHandler(upgrader)
 	matchHandler := handler.NewMatchHandler(rdb)
+	resultHandler := handler.NewResultHandler()
 
 	// Handler for WebSocket connections
 	e.GET("/v1/ws", webSocketHandler.ConnectWebSocket)
 
 	// Handler for matching game requests
 	e.POST("/v1/match", matchHandler.MatchGames)
+
+	// Handler for getting game results
+	e.POST("/v1/result/:gameUuid", resultHandler.SaveGameResult)
 
 	// Add CORS middleware
 	e.Use(middleware.CORS(),
