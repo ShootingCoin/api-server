@@ -136,6 +136,11 @@ func (h *MatchHandler) MatchGames(c echo.Context) error {
 					return
 				}
 
+				// Mark connections as matched
+				if err := common.SetMatched(reqUuid, matchUuid); err != nil {
+					log.Errorln(err)
+					return
+				}
 				log.Infof("Match completed: %s:%s", reqUuid, matchUuid)
 
 				return

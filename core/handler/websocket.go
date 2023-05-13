@@ -11,11 +11,11 @@ import (
 	"github.com/ShootingCoin/api-server/core/common"
 )
 
-type WebSockerHandler struct {
+type WebSocketHandler struct {
 	upgrader websocket.Upgrader
 }
 
-func (h *WebSockerHandler) ConnectWebSocket(c echo.Context) error {
+func (h *WebSocketHandler) ConnectWebSocket(c echo.Context) error {
 	// Upgrade connection to WebSocket
 	conn, err := h.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
@@ -46,22 +46,35 @@ func (h *WebSockerHandler) ConnectWebSocket(c echo.Context) error {
 	// Continuously read messages from WebSocket
 	go func() {
 		for {
-			_, _, err := conn.ReadMessage()
+			messageType, message, err := common.ReadMessage(uuid.String())
 			if err != nil {
 				if websocket.IsCloseError(err) {
 					log.Infoln("Connection closed")
 				} else {
 					log.Errorln(err)
 				}
-				conn.Close()
+				common.CloseConnection(uuid.String())
 
-				if err := common.DeleteConnection(uuid.String()); err != nil {
+				// Delete connection and mark matched connection as unmatched
+				if err := common.DeleteConnections(uuid.String()); err != nil {
 					log.Errorln(err)
 					return
 				}
 				log.Infoln(fmt.Sprintf("Deleted connection: %s", uuid.String()))
 
 				break
+			}
+
+			// Check if connection is matched
+			if matchUuid := common.GetMatched(uuid.String()); matchUuid != "" {
+				// Start data transfer
+				if messageType == websocket.TextMessage {
+					// Forward the message to the matched client
+					err = common.WriteMessage(matchUuid, string(message))
+					if err != nil {
+						log.Errorln("Failed to write message:", err)
+					}
+				}
 			}
 		}
 	}()
@@ -75,8 +88,8 @@ func (h *WebSockerHandler) ConnectWebSocket(c echo.Context) error {
 	return nil
 }
 
-func NewWebSocketHandler(upgrader websocket.Upgrader) *WebSockerHandler {
-	return &WebSockerHandler{
+func NewWebSocketHandler(upgrader websocket.Upgrader) *WebSocketHandler {
+	return &WebSocketHandler{
 		upgrader: upgrader,
 	}
 }
