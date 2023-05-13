@@ -36,7 +36,7 @@ func (r *MatchGameReq) Validate() error {
 	return validator.New().Struct(r)
 }
 
-func (h *MatchHandler) MatchGames(c echo.Context) error {
+func (h *MatchHandler) MatchGame(c echo.Context) error {
 	// Get the request body
 	var matchReq MatchGameReq
 	if err := c.Bind(&matchReq); err != nil {

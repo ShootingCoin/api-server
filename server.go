@@ -47,7 +47,7 @@ func main() {
 	e.GET("/v1/ws", webSocketHandler.ConnectWebSocket)
 
 	// Handler for matching game requests
-	e.POST("/v1/match", matchHandler.MatchGames)
+	e.POST("/v1/match", matchHandler.MatchGame)
 
 	// Handler for getting game results
 	e.POST("/v1/result/:gameUuid", resultHandler.SaveGameResult)
