@@ -93,33 +93,26 @@ func (h *MatchHandler) MatchGame(c echo.Context) error {
 				}
 
 				// Pop matching request from Redis
-				if _, err := h.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-					popResult := pipe.RPop(ctx, requestsKeyPrefix+reqBucket)
+				popResult := h.rdb.RPop(ctx, requestsKeyPrefix+reqBucket)
 
-					if popResult.Err() != nil {
-						log.Errorln(popResult.Err())
-						return popResult.Err()
-					}
+				if popResult.Err() != nil {
+					log.Errorln(popResult.Err())
+					continue
+				}
 
-					req, err := popResult.Result()
-					if err != nil {
-						log.Errorln(err)
-						return err
-					}
-
-					// Extract UUID and request from Redis value
-					parts := strings.Split(req, ":")
-					if len(parts) != 2 {
-						log.Errorf("Invalid Redis value: %v", req)
-						return fmt.Errorf("invalid Redis value")
-					}
-					matchUuid = parts[0]
-
-					return nil
-				}); err != nil {
+				req, err := popResult.Result()
+				if err != nil {
 					log.Errorln(err)
 					continue
 				}
+
+				// Extract UUID and request from Redis value
+				parts := strings.Split(req, ":")
+				if len(parts) != 2 {
+					log.Errorf("Invalid Redis value: %v", req)
+					continue
+				}
+				matchUuid = parts[0]
 
 				// Send matching result to requesting client
 				if err := common.WriteMessage(reqUuid, gameUuid.String()); err != nil {

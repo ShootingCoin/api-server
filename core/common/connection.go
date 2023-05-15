@@ -18,12 +18,12 @@ func ListConnections() map[string]*websocket.Conn {
 }
 
 func StoreConnection(uuid string, conn *websocket.Conn) error {
-	connectionsMutex.Lock()
-	defer connectionsMutex.Unlock()
+	//connectionsMutex.Lock()
+	//defer connectionsMutex.Unlock()
 	connections[uuid] = conn
 
-	matchedMutex.Lock()
-	defer matchedMutex.Unlock()
+	//matchedMutex.Lock()
+	//defer matchedMutex.Unlock()
 	matched[uuid] = ""
 
 	return nil
@@ -34,8 +34,8 @@ func DeleteConnections(uuid string) error {
 		return err
 	}
 
-	matchedMutex.Lock()
-	defer matchedMutex.Unlock()
+	//matchedMutex.Lock()
+	//defer matchedMutex.Unlock()
 
 	// Delete matched connection
 	if matchUuid := GetMatched(uuid); matchUuid != "" {
@@ -43,8 +43,8 @@ func DeleteConnections(uuid string) error {
 	}
 	delete(matched, uuid)
 
-	connectionsMutex.Lock()
-	defer connectionsMutex.Unlock()
+	//connectionsMutex.Lock()
+	//defer connectionsMutex.Unlock()
 	delete(connections, uuid)
 
 	return nil
@@ -98,8 +98,8 @@ func SetMatched(reqUuid string, matchUuid string) error {
 		return err
 	}
 
-	matchedMutex.Lock()
-	defer matchedMutex.Unlock()
+	//matchedMutex.Lock()
+	//defer matchedMutex.Unlock()
 	matched[reqUuid] = matchUuid
 	matched[matchUuid] = reqUuid
 
@@ -107,8 +107,8 @@ func SetMatched(reqUuid string, matchUuid string) error {
 }
 
 func checkConnection(uuid string) error {
-	connectionsMutex.Lock()
-	defer connectionsMutex.Unlock()
+	//connectionsMutex.Lock()
+	//defer connectionsMutex.Unlock()
 
 	if _, ok := connections[uuid]; !ok {
 		return fmt.Errorf("connection not found: %s", uuid)
@@ -118,8 +118,8 @@ func checkConnection(uuid string) error {
 }
 
 func checkMatched(uuid string) error {
-	matchedMutex.Lock()
-	defer matchedMutex.Unlock()
+	//matchedMutex.Lock()
+	//defer matchedMutex.Unlock()
 
 	if _, ok := matched[uuid]; !ok {
 		return fmt.Errorf("connection not found: %s", uuid)
