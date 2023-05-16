@@ -1,10 +1,15 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
 	"github.com/gorilla/websocket"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/ShootingCoin/api-server/entity"
 )
 
 // Map to store WebSocket connections and UUIDs
@@ -50,12 +55,18 @@ func DeleteConnections(uuid string) error {
 	return nil
 }
 
-func WriteMessage(uuid string, msg string) error {
+func WriteMessage(uuid string, msg entity.Message) error {
 	if err := checkConnection(uuid); err != nil {
 		return err
 	}
 
-	if err := connections[uuid].WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		log.Errorln("Error on JSON Marshal: %v", err)
+		return err
+	}
+
+	if err := connections[uuid].WriteMessage(websocket.TextMessage, payload); err != nil {
 		return err
 	}
 

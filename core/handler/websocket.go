@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/ShootingCoin/api-server/core/common"
+	"github.com/ShootingCoin/api-server/entity"
 )
 
 type WebSocketHandler struct {
@@ -37,7 +38,14 @@ func (h *WebSocketHandler) ConnectWebSocket(c echo.Context) error {
 	log.Infoln(fmt.Sprintf("New connection: %s", uuid.String()))
 
 	// Send UUID to frontend
-	err = common.WriteMessage(uuid.String(), uuid.String())
+	msgType, err := entity.ParseMessageType("wsId")
+	if err != nil {
+		return err
+	}
+	err = common.WriteMessage(uuid.String(), entity.Message{
+		Type:    msgType.String(),
+		Content: uuid.String(),
+	})
 	if err != nil {
 		log.Errorln(err)
 		return err
@@ -70,7 +78,14 @@ func (h *WebSocketHandler) ConnectWebSocket(c echo.Context) error {
 				// Start data transfer
 				if messageType == websocket.TextMessage {
 					// Forward the message to the matched client
-					err = common.WriteMessage(matchUuid, string(message))
+					msgType, err := entity.ParseMessageType("gameInfo")
+					if err != nil {
+						log.Errorln(err)
+					}
+					err = common.WriteMessage(matchUuid, entity.Message{
+						Type:    msgType.String(),
+						Content: string(message),
+					})
 					if err != nil {
 						log.Errorln("Failed to write message:", err)
 					}

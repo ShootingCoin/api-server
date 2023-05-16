@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/ShootingCoin/api-server/core/common"
+	"github.com/ShootingCoin/api-server/entity"
 	"github.com/ShootingCoin/api-server/utils"
 )
 
@@ -115,7 +116,15 @@ func (h *MatchHandler) MatchGame(c echo.Context) error {
 				matchUuid = parts[0]
 
 				// Send matching result to requesting client
-				if err := common.WriteMessage(reqUuid, gameUuid.String()); err != nil {
+				msgType, err := entity.ParseMessageType("gameId")
+				if err != nil {
+					log.Errorln(err)
+					continue
+				}
+				if err := common.WriteMessage(reqUuid, entity.Message{
+					Type:    msgType.String(),
+					Content: gameUuid.String(),
+				}); err != nil {
 					log.Errorln(err)
 					h.pushRequest(ctx, requestsKeyPrefix+reqBucket, reqUuid+":"+reqBucket)
 
@@ -123,7 +132,10 @@ func (h *MatchHandler) MatchGame(c echo.Context) error {
 				}
 
 				// Send matching result to matched client
-				if err := common.WriteMessage(matchUuid, gameUuid.String()); err != nil {
+				if err := common.WriteMessage(matchUuid, entity.Message{
+					Type:    msgType.String(),
+					Content: gameUuid.String(),
+				}); err != nil {
 					log.Errorln(err)
 
 					return
