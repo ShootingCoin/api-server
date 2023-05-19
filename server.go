@@ -11,10 +11,17 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/ShootingCoin/api-server/core/handler"
+	"github.com/ShootingCoin/api-server/utils"
 )
 
 func main() {
 	e := echo.New()
+
+	address, err := utils.GetAddress()
+	if err != nil {
+		log.Errorln("Failed to get address: %v", err)
+		return
+	}
 
 	// Initialize WebSocket upgrader
 	var upgrader = websocket.Upgrader{
@@ -34,7 +41,7 @@ func main() {
 	})
 
 	// Check the connection to Redis
-	_, err := rdb.Ping(context.Background()).Result()
+	_, err = rdb.Ping(context.Background()).Result()
 	if err != nil {
 		log.Errorln("Failed to connect to Redis: %v", err)
 	}
