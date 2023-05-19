@@ -94,8 +94,8 @@ func GetMatched(uuid string) string {
 		return ""
 	}
 
-	matchedMutex.Lock()
-	defer matchedMutex.Unlock()
+	//matchedMutex.Lock()
+	//defer matchedMutex.Unlock()
 
 	return matched[uuid]
 }

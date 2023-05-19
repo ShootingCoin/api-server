@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -17,7 +18,14 @@ import (
 func main() {
 	e := echo.New()
 
-	address, err := utils.GetAddress()
+	// Generate Polygon client
+	client, err := ethclient.Dial("https://rpc-mumbai.matic.today")
+	if err != nil {
+		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
+	}
+
+	// Retrieve the private key and address from the keystore file
+	privateKey, address, err := utils.GetAddress()
 	if err != nil {
 		log.Errorln("Failed to get address: %v", err)
 		return

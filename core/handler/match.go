@@ -115,12 +115,21 @@ func (h *MatchHandler) MatchGame(c echo.Context) error {
 				}
 				matchUuid = parts[0]
 
-				// Send matching result to requesting client
+				// parse message type
 				msgType, err := entity.ParseMessageType("gameId")
 				if err != nil {
 					log.Errorln(err)
 					continue
 				}
+
+				// Mark connections as matched
+				if err := common.SetMatched(reqUuid, matchUuid); err != nil {
+					log.Errorln(err)
+					return
+				}
+				log.Infof("Match completed: %s:%s", reqUuid, matchUuid)
+
+				// Send matching result to requesting client
 				if err := common.WriteMessage(reqUuid, entity.Message{
 					Type:    msgType.String(),
 					Content: gameUuid.String(),
@@ -140,13 +149,6 @@ func (h *MatchHandler) MatchGame(c echo.Context) error {
 
 					return
 				}
-
-				// Mark connections as matched
-				if err := common.SetMatched(reqUuid, matchUuid); err != nil {
-					log.Errorln(err)
-					return
-				}
-				log.Infof("Match completed: %s:%s", reqUuid, matchUuid)
 
 				return
 			}

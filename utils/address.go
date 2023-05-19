@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"crypto/ecdsa"
 	"encoding/hex"
 	"os"
 
@@ -9,39 +10,39 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// GetAddress returns the address and the private key in .env
-func GetAddress() (string, error) {
+// GetAddress returns the address and the private key in .keystore
+func GetAddress() (*ecdsa.PrivateKey, string, error) {
 	// Load env file
-	err := godotenv.Load(".env")
+	err := godotenv.Load(".keystore")
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
-	// Get private key and address from .env
+	// Get private key and address from .keystore
 	privateKeyHex := os.Getenv("PRIVATE_KEY")
 	address := os.Getenv("ADDRESS")
 
 	if privateKeyHex == "" || address == "" {
-		return "", err
+		return nil, "", err
 	}
 
 	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	privateKey, err := crypto.ToECDSA(privateKeyBytes)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	// Validate the address
 	if address != crypto.PubkeyToAddress(privateKey.PublicKey).Hex() {
-		return "", err
+		return nil, "", err
 	}
 
 	log.Printf("Private Key: %s\n", privateKeyHex)
 	log.Printf("Address: %s\n", address)
 
-	return address, nil
+	return privateKey, address, nil
 }
