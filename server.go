@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/ShootingCoin/api-server/core/chain"
 	"github.com/ShootingCoin/api-server/core/handler"
 	"github.com/ShootingCoin/api-server/utils"
 )
@@ -25,11 +26,35 @@ func main() {
 	}
 
 	// Retrieve the private key and address from the keystore file
-	privateKey, address, err := utils.GetAddress()
+	privateKey, _, err := utils.GetAddress()
 	if err != nil {
 		log.Errorln("Failed to get address: %v", err)
 		return
 	}
+
+	contractAddress, err := utils.ConvertToAddress("0xa78f62a91c7872dc3151529739e309cdf6aED887")
+	if err != nil {
+		log.Errorln("Failed to convert to address: %v", err)
+		return
+	}
+	player1Address, err := utils.ConvertToAddress("0x1bc1447a4f9D24FE355523B771E32282F1Ca5ceC")
+	if err != nil {
+		log.Errorln("Failed to convert to address: %v", err)
+		return
+	}
+	player2Address, err := utils.ConvertToAddress("0x1bc1447a4f9D24FE355523B771E32282F1Ca5ceC")
+	if err != nil {
+		log.Errorln("Failed to convert to address: %v", err)
+		return
+	}
+
+	_, err = chain.CheckEventEmissions(client, contractAddress, privateKey, player1Address, player2Address)
+	if err != nil {
+		log.Errorln("Failed to check event emissions: %v", err)
+		return
+	}
+
+	return
 
 	// Initialize WebSocket upgrader
 	var upgrader = websocket.Upgrader{

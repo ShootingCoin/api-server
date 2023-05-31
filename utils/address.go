@@ -3,8 +3,10 @@ package utils
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"fmt"
 	"os"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
@@ -41,8 +43,24 @@ func GetAddress() (*ecdsa.PrivateKey, string, error) {
 		return nil, "", err
 	}
 
-	log.Printf("Private Key: %s\n", privateKeyHex)
 	log.Printf("Address: %s\n", address)
 
 	return privateKey, address, nil
+}
+
+func ConvertToAddress(hexString string) (common.Address, error) {
+	// Step 1: Remove the "0x" prefix
+	hexString = hexString[2:]
+
+	// Step 2: Decode the hexadecimal string into a byte slice
+	bytes, err := hex.DecodeString(hexString)
+	if err != nil {
+		fmt.Println("Failed to decode hexadecimal string:", err)
+		return common.Address{}, err
+	}
+
+	// Step 3: Convert the byte slice to common.Address
+	address := common.BytesToAddress(bytes)
+
+	return address, nil
 }

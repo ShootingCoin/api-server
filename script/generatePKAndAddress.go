@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/hex"
 	"io/ioutil"
-	"log"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
