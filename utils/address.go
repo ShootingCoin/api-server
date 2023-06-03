@@ -48,6 +48,40 @@ func GetAddress() (*ecdsa.PrivateKey, string, error) {
 	return privateKey, address, nil
 }
 
+func GetContractAddress() (string, error) {
+	// Load env file
+	err := godotenv.Load(".keystore")
+	if err != nil {
+		return "", err
+	}
+
+	// Get private key and address from .keystore
+	address := os.Getenv("CONTRACT_ADDRESS")
+
+	if address == "" {
+		return "", err
+	}
+
+	return address, nil
+}
+
+func GetInfuraUrl() (string, error) {
+	// Load env file
+	err := godotenv.Load(".keystore")
+	if err != nil {
+		return "", err
+	}
+
+	// Get private key and address from .keystore
+	url := os.Getenv("INFURA_URL")
+
+	if url == "" {
+		return "", err
+	}
+
+	return url, nil
+}
+
 func ConvertToAddress(hexString string) (common.Address, error) {
 	// Step 1: Remove the "0x" prefix
 	hexString = hexString[2:]

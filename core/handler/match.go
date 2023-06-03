@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/ShootingCoin/api-server/core/chain"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"net/http"
 	"strings"
 	"time"
@@ -25,7 +27,9 @@ const (
 )
 
 type MatchHandler struct {
-	rdb *redis.Client
+	rdb       *redis.Client
+	ethClient *ethclient.Client
+	txConfig  entity.TxConfig
 }
 
 type MatchGameReq struct {
@@ -49,6 +53,16 @@ func (h *MatchHandler) MatchGame(c echo.Context) error {
 	if err := matchReq.Validate(); err != nil {
 		log.Errorln(err)
 		return c.JSON(http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
+	}
+
+	// Check 'Entered' event
+	entered, err := chain.CheckEventEmissions(h.ethClient, h.txConfig)
+	if err != nil {
+		log.Errorln("Failed to check event emissions: %v", err)
+		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Failed to check event emissions: %v", err))
+	}
+	if !entered {
+		return c.JSON(http.StatusBadRequest, "Unable to match game: 'Entered' event has not been emitted")
 	}
 
 	// Convert price to bucket value
@@ -150,6 +164,11 @@ func (h *MatchHandler) MatchGame(c echo.Context) error {
 					return
 				}
 
+				//err = chain.StartGame(h.ethClient, h.txConfig, gameUuid, reqUuid, matchUuid)
+				//if err != nil {
+				//	log.Fatalf("Failed to start the game: %v", err)
+				//}
+
 				return
 			}
 		}
@@ -171,8 +190,10 @@ func (h *MatchHandler) pushRequest(ctx context.Context, key string, value string
 	return nil
 }
 
-func NewMatchHandler(rdb *redis.Client) *MatchHandler {
+func NewMatchHandler(rdb *redis.Client, ethClient *ethclient.Client, txConfig entity.TxConfig) *MatchHandler {
 	return &MatchHandler{
-		rdb: rdb,
+		rdb:       rdb,
+		ethClient: ethClient,
+		txConfig:  txConfig,
 	}
 }
